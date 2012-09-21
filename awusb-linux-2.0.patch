@@ -1,0 +1,83 @@
+diff -rupN awusb-linux.orig/apps/awusb.c awusb-linux/apps/awusb.c
+--- awusb-linux.orig/apps/awusb.c	2004-11-23 01:39:08.000000000 +0100
++++ awusb-linux/apps/awusb.c	2012-09-21 14:00:41.586355761 +0200
+@@ -66,7 +66,8 @@ int awusb_scanbus(awusb_device *dev_tabl
+ 	  awusb_release(dev_table[i]);
+ 	}
+ 	
+-	free(dev_table[i]);
++	/* free(dev_table[i]); */
++	mxFree(dev_table[i]);
+       }
+       
+       dev_table[i] = NULL;
+@@ -98,7 +99,9 @@ int awusb_scanbus(awusb_device *dev_tabl
+ 	else if (dev->descriptor.idProduct == AWUSB_PROD_ID) {
+ 
+ 	  /* make a new device and put it in the table */
+-	  newdev = (awusb_device *)malloc(sizeof(awusb_device));
++	  /* newdev = (awusb_device *)mxMalloc(sizeof(awusb_device)); */
++	  newdev = (awusb_device *)mxMalloc(sizeof(awusb_device));
++      mexMakeMemoryPersistent(newdev);
+ 	  
+ 	  if (newdev != NULL) {
+ 
+diff -rupN awusb-linux.orig/apps/awusb_down.c awusb-linux/apps/awusb_down.c
+--- awusb-linux.orig/apps/awusb_down.c	2004-11-23 01:39:08.000000000 +0100
++++ awusb-linux/apps/awusb_down.c	2012-09-21 14:00:41.587355761 +0200
+@@ -146,7 +146,8 @@ void awusb_download() {
+       if ((dev->descriptor.idVendor == AWUSB_VEND_ID) &&
+ 	  (dev->descriptor.idProduct == AWUSB_PROD_NOFIRM_ID)) {
+ 
+-	printf("sending firmware to device %s\n", dev->filename);
++	/* printf("sending firmware to device %s\n", dev->filename); */
++	found = printf("sending firmware to device %s\n", dev->filename);
+ 
+ 	awusb_sendfirmware(dev);
+       }
+diff -rupN awusb-linux.orig/apps/awusb_down.h awusb-linux/apps/awusb_down.h
+--- awusb-linux.orig/apps/awusb_down.h	2004-11-23 01:39:08.000000000 +0100
++++ awusb-linux/apps/awusb_down.h	2012-09-21 14:00:41.587355761 +0200
+@@ -42,12 +42,12 @@
+ 
+ #define AWUSB_CPU_ADDR   0x7f92
+ #define AWUSB_RST_ADDR   0x7fd6
+-#define AWUSB_FIRM_FILE  "firmware/0854.0100.0_00.hex"
++#define AWUSB_FIRM_FILE  "firmware/0854.0100.0_01.hex"
+ 
+ 
+ /*** globals ****************************************************************/
+ 
+-int verbose    = AWUSB_TRUE;
++int verbose    = AWUSB_FALSE;
+ char *firmfile = NULL;
+ 
+ 
+diff -rupN awusb-linux.orig/apps/awusb.h awusb-linux/apps/awusb.h
+--- awusb-linux.orig/apps/awusb.h	2004-11-23 01:39:08.000000000 +0100
++++ awusb-linux/apps/awusb.h	2012-09-21 14:15:05.344394302 +0200
+@@ -39,7 +39,9 @@
+ 
+ /*** defines ****************************************************************/
+  
+-#define ERR(fmt, args...) fprintf(stderr, "awusb error: "fmt" \n", ## args)
++/* #define ERR(fmt, args...) fprintf(stderr, "awusb error: "fmt" \n", ## args) */
++#define ERR(fmt, args...) printf("awusb error: "fmt" \n", ## args)
++
+ 
+ #define AWUSB_VEND_ID         0x0854
+ #define AWUSB_PROD_ID         0x0101
+diff -rupN awusb-linux.orig/apps/Makefile awusb-linux/apps/Makefile
+--- awusb-linux.orig/apps/Makefile	2004-11-23 01:39:08.000000000 +0100
++++ awusb-linux/apps/Makefile	2012-09-21 14:00:41.587355761 +0200
+@@ -13,8 +13,8 @@ endif
+ CFLAGS += $(DBGFLAGS)
+ 
+ all:
+-	gcc $(CFLAGS) $(LDFLAGS) awusb.c awusb_test.c -o awusb_test
+-	gcc $(CFLAGS) $(LDFLAGS) awusb.c awusb_down.c -o awusb_down
++	gcc $(CFLAGS) awusb.c awusb_test.c -o awusb_test $(LDFLAGS)
++	gcc $(CFLAGS) awusb.c awusb_down.c -o awusb_down $(LDFLAGS)
+ 
+ clean:
+ 	-rm -rf *.o *~ core awusb_test awusb_down

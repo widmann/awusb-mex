@@ -27,9 +27,7 @@
 %   Requires awusb-linux (download from
 %   http://sourceforge.net/projects/awusb-linux/) and libusb-dev. Patch
 %   awusb.c, awusb_down.c, and awusb_down.h with awusb-linux-2.0.patch
-%   before compilation (with mex awusb_mex.c -lusb). Firmware should be
-%   copied from awusb-linux to a subdirectory of the mex file named
-%   "firmware".
+%   before compilation (with mex awusb_mex.c -lusb).
 %
 % Author: Andreas Widmann, University of Leipzig, 2012
 

@@ -1,0 +1,4 @@
+SUBSYSTEM=="usb", ATTR{idVendor}=="0854", ATTR{idProduct}=="0100", RUN+="/sbin/fxload -v -D %N -I /lib/firmware/0854.0100.0_01.hex"
+SUBSYSTEM=="usb", ATTR{idVendor}=="0854", ATTR{idProduct}=="0100", RUN+="/bin/sleep 1"
+SUBSYSTEM=="usb", ATTR{idVendor}=="0854", ATTR{idProduct}=="0100", RUN+="/sbin/fxload -v -D %N -I /lib/firmware/0854.0100.0_01.hex"
+SUBSYSTEM=="usb", ATTR{idVendor}=="0854", ATTR{idProduct}=="0101", MODE=="0666"

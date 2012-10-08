@@ -1,7 +1,7 @@
 /*
 awusb_mex.c
 
-Compile in MATLAB with mex awusb_mex.c [-v] -lusb
+Compile in MATLAB with mex awusb_mex.c [-v]
 For description see awusb_mex.m
 
 Copyright (C) 2012 Andreas Widmann, University of Leipzig, widmann@uni-leipzig.de
@@ -22,21 +22,22 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
 #include <mex.h>
-#include "firmware.c"
+#include <sys/types.h>
 #include "awusb.c"
-#include "awusb_down.c"
+
+#define AWUSB_MAX_DEVS 256
 
 typedef void (*MexFunctionPtr)(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]);
 
 static awusb_device *device_table[256];
 
-void AWUSBDeinit()
+void atExit(void)
 {
 
-    int i;
+    uint64_T i;
 
     /* Clear out device table */
-    for (i = 0; i < 1; i++) {
+    for (i = 0; i < AWUSB_MAX_DEVS; i++) {
         if (device_table[i] != NULL) {
             if (device_table[i]->claimed) {
                 awusb_release(device_table[i]);
@@ -48,41 +49,77 @@ void AWUSBDeinit()
 
 }
 
-void AWUSBInit(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
+
+void AWUSBCloseAll(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 {
 
-    int i, numdevs;
+    uint64_T i;
 
-    /* Scan the bus for devices */
-    numdevs = awusb_scanbus(device_table, 256, AWUSB_FALSE);
-
-    /* Report devices */
-    if (numdevs == 0) {
-        printf("No ActiveWire device found! Trying to load firmware.\n");
-        awusb_download();
-        usleep(1000000);
-        awusb_download(); /* Firmware needs to be loaded twice. Don't know why. Might be machine specific? */
-        usleep(4000000); /* Wait until firmware is loaded? Might be machine specific? */
-        numdevs = awusb_scanbus(device_table, 256, AWUSB_FALSE);
-    }
-
-    if (numdevs == 0) {
-        printf("No ActiveWire device found!\n");
-    } else {
-        mexAtExit(&AWUSBDeinit);
-        printf("%d ActiveWire device(s) found and claimed:\n", numdevs);
-        for (i = 0; i < numdevs; i++) {
-            printf("Device %3d: USB filename %s, vendor ID 0x%04x, product ID 0x%04x\n", i + 1, device_table[i]->udev->filename, device_table[i]->udev->descriptor.idVendor, device_table[i]->udev->descriptor.idProduct);
+    /* Release device */
+    for (i = 0; i < AWUSB_MAX_DEVS; i++) {
+        if (device_table[i] != NULL) {
+            if (device_table[i]->claimed) {
+                if (awusb_release(device_table[i]) != AWUSB_OK) {
+                    mexErrMsgTxt("Could not close ActiveWire device.");
+                }
+            }
         }
     }
 
+}
+
+void AWUSBOpen(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
+{
+    uint64_T dev;
+
+    /* The device number must be noncomplex scalar double */
+    if (!mxIsDouble(prhs[0]) || mxIsComplex(prhs[0]) || !mxIsScalar(prhs[0])) {
+        mexErrMsgTxt("Device must be noncomplex scalar double.");
+    }
+
+    /* Assign pointers to each input */
+    dev = *mxGetPr(prhs[0]);
+    if (dev < 1 || dev > AWUSB_MAX_DEVS) {
+        mexErrMsgTxt("Device number out of range.");
+    }
+    dev--;
+
+    /* Claim device */
+    if (device_table[dev] == NULL || awusb_claim(device_table[dev]) != AWUSB_OK) {
+        mexErrMsgTxt("Could not open ActiveWire device.");
+    }
+    
+}
+
+void AWUSBClose(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
+{
+    uint64_T dev;
+
+    /* The device number must be noncomplex scalar double */
+    if (!mxIsDouble(prhs[0]) || mxIsComplex(prhs[0]) || !mxIsScalar(prhs[0])) {
+        mexErrMsgTxt("Device must be noncomplex scalar double.");
+    }
+
+    /* Assign pointers to each input */
+    dev = *mxGetPr(prhs[0]);
+    if (dev < 1 || dev > AWUSB_MAX_DEVS) {
+        mexErrMsgTxt("Device number out of range.");
+    }
+    dev--;
+
+    /* Release device */
+    if (device_table[dev] == NULL || awusb_release(device_table[dev]) != AWUSB_OK) {
+        mexErrMsgTxt("Could not close ActiveWire device.");
+    }
+    
 }
 
 void AWUSBToggle(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 {
 
     double *bitsWayPtr;
-    int i, dev;
+    int i;
+    uint64_T dev;
     unsigned int awDirection = 0;
 
     /* Two input arguments required */
@@ -102,6 +139,9 @@ void AWUSBToggle(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 
     /* Assign pointers to each input */
     dev = *mxGetPr(prhs[0]);
+    if (dev < 1 || dev > AWUSB_MAX_DEVS) {
+        mexErrMsgTxt("Device number out of range.");
+    }
     dev--;
     bitsWayPtr = mxGetPr(prhs[1]);
 
@@ -113,7 +153,7 @@ void AWUSBToggle(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
     }
 
     /* Toggle port */
-    if (awusb_toggleport(device_table[dev], awDirection) != AWUSB_OK) {
+    if (device_table[dev] == NULL || awusb_toggleport(device_table[dev], awDirection) != AWUSB_OK) {
         mexErrMsgTxt("Could not write to ActiveWire device.");
     }
 
@@ -123,7 +163,8 @@ void AWUSBWrite(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 {
 
     double *bitsWayPtr;
-    int i, dev;
+    int i;
+    uint64_T dev;
     unsigned int awOutputValue = 0;
 
     /* Two input arguments required */
@@ -143,6 +184,9 @@ void AWUSBWrite(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 
     /* Assign pointers to each input */
     dev = *mxGetPr(prhs[0]);
+    if (dev < 1 || dev > AWUSB_MAX_DEVS) {
+        mexErrMsgTxt("Device number out of range.");
+    }
     dev--;
     bitsWayPtr = mxGetPr(prhs[1]);
 
@@ -153,8 +197,8 @@ void AWUSBWrite(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
         }
     }
 
-    /* Toggle port */
-    if (awusb_write(device_table[dev], awOutputValue) != 2) {
+    /* Write port */
+    if (device_table[dev] == NULL || awusb_write(device_table[dev], awOutputValue) != 2) {
         mexErrMsgTxt("Could not write to ActiveWire device.");
     }
 
@@ -164,7 +208,8 @@ void AWUSBRead(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 {
 
     double *bitsInPtr;
-    int i, dev;
+    int i;
+    uint64_T dev;
     unsigned int awInputValue = 0;
 
     /* The input must be noncomplex scalar double */
@@ -174,12 +219,15 @@ void AWUSBRead(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 
     /* Assign pointers to each input and output */
     dev = *mxGetPr(prhs[0]);
+    if (dev < 1 || dev > AWUSB_MAX_DEVS) {
+        mexErrMsgTxt("Device number out of range.");
+    }
     dev--;
     plhs[0] = mxCreateDoubleMatrix(1, 16, mxREAL);
     bitsInPtr = mxGetPr(plhs[0]);
 
     /* Read data */
-    if (awusb_read(device_table[dev], &awInputValue) != 2) {
+    if (device_table[dev] == NULL || awusb_read(device_table[dev], &awInputValue) != 2) {
         mexErrMsgTxt("Could not read from ActiveWire device.");
     }
 
@@ -196,8 +244,9 @@ void AWUSBRead(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 
 static MexFunctionPtr SelectFunction(char *command)
 {
-    if (strcmp(command, "Init") == 0) return &AWUSBInit;
-    if (strcmp(command, "Deinit") == 0) return &AWUSBDeinit;
+    if (strcmp(command, "Open") == 0) return &AWUSBOpen;
+    if (strcmp(command, "Close") == 0) return &AWUSBClose;
+    if (strcmp(command, "CloseAll") == 0) return &AWUSBCloseAll;
     if (strcmp(command, "Read") == 0) return &AWUSBRead;
     if (strcmp(command, "Write") == 0) return &AWUSBWrite;
     if (strcmp(command, "Toggle") == 0) return &AWUSBToggle;
@@ -216,10 +265,12 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 
     /* Clear out device table */
     if (firstTime) {
-        for (i = 0; i < 256; i++) {
+        for (i = 0; i < AWUSB_MAX_DEVS; i++) {
             device_table[i] = NULL;
         }
         firstTime = 0;
+        awusb_scanbus(device_table, AWUSB_MAX_DEVS, AWUSB_TRUE);
+        mexAtExit(atExit);
     }
 
     /* Input must be a string. */

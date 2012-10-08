@@ -7,8 +7,8 @@
 %   >> awusb_mex(command, device, portvalue)
 %
 % Inputs:
-%   command   - string 'Init', 'Deinit', 'Toggle', 'Read', or 'Write'
-%   device    - double device number
+%   command   - string 'Open', 'Close', 'Toggle', 'Read', or 'Write'
+%   device    - scalar double device number
 %   portvalue - 1x16 double vector pin state for 'Write' (0: low; 1: high)
 %               or 'Toggle' (0: input; 1; output)
 %
@@ -16,18 +16,23 @@
 %   portvalue - 1x16 double vector pin state for 'Read' (0: low; 1: high)
 %
 % Examples:
-%   awusb_mex('Init');
+%   awusb_mex('Open', 1);
 %   awusb_mex('Toggle', zeros(1, 16));
 %   portvalue = awusb_mex('Read', 1);
 %   awusb_mex('Toggle', ones(1, 16));
 %   awusb_mex('Write', ones(1, 16));
-%   awusb_mex('Deinit');
+%   awusb_mex('Close', 1);
+%   clear awusb_mex
 %
 % Note:
 %   Requires awusb-linux (download from
 %   http://sourceforge.net/projects/awusb-linux/) and libusb-dev. Patch
-%   awusb.c, awusb_down.c, and awusb_down.h with awusb-linux-2.0.patch
-%   before compilation (with mex awusb_mex.c -lusb).
+%   awusb.c, with awusb-linux-2.0.patch before compilation (with mex
+%   awusb_mex.c -lusb). ActiveWire firmware must be loaded. Usage of udev
+%   rules is recommendended to load firmware at boot time (see provided
+%   example file for Ubuntu). Devices should be plugged in before first use
+%   of awusb_mex. In case a device is plugged later a rescan of the USB bus
+%   can be forced with clear awusb_mex
 %
 % Author: Andreas Widmann, University of Leipzig, 2012
 

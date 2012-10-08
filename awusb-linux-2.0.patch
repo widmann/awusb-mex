@@ -1,6 +1,6 @@
 diff -rupN awusb-linux.orig/apps/awusb.c awusb-linux/apps/awusb.c
 --- awusb-linux.orig/apps/awusb.c	2004-11-23 01:39:08.000000000 +0100
-+++ awusb-linux/apps/awusb.c	2012-09-21 14:00:41.586355761 +0200
++++ awusb-linux/apps/awusb.c	2012-09-27 16:48:49.852836264 +0200
 @@ -66,7 +66,8 @@ int awusb_scanbus(awusb_device *dev_tabl
  	  awusb_release(dev_table[i]);
  	}
@@ -22,174 +22,18 @@ diff -rupN awusb-linux.orig/apps/awusb.c awusb-linux/apps/awusb.c
  	  
  	  if (newdev != NULL) {
  
-diff -rupN awusb-linux.orig/apps/awusb_down.c awusb-linux/apps/awusb_down.c
---- awusb-linux.orig/apps/awusb_down.c	2004-11-23 01:39:08.000000000 +0100
-+++ awusb-linux/apps/awusb_down.c	2012-09-24 16:54:58.625181608 +0200
-@@ -146,7 +146,8 @@ void awusb_download() {
-       if ((dev->descriptor.idVendor == AWUSB_VEND_ID) &&
- 	  (dev->descriptor.idProduct == AWUSB_PROD_NOFIRM_ID)) {
- 
--	printf("sending firmware to device %s\n", dev->filename);
-+	/* printf("sending firmware to device %s\n", dev->filename); */
-+	found = printf("sending firmware to device %s\n", dev->filename);
- 
- 	awusb_sendfirmware(dev);
-       }
-@@ -170,39 +171,19 @@ void awusb_download() {
-  */
- int awusb_sendfirmware(struct usb_device *dev) {
- 
--  int i;
-+  int i, j;
-   int ret;
--  int len;
--  int line    = 1;
-+  int length;
-+  int linelen;
-+  int linenum              = 0;
-+  char *line               = NULL;
-   int timeout = 500;
-   unsigned int addr;
-   unsigned char type;
--  unsigned char awusb_firmware[128];
-   unsigned char cpustop[]     = {0x01, 0x00};
-   unsigned char cpustart[]    = {0x00, 0x00};
-+  unsigned char data[128];
-   awusb_device device;      
--  FILE *fp                    = NULL;
--
--
--  /* open the firmware file */
--  if (firmfile == NULL) {
--    fp = fopen(AWUSB_FIRM_FILE, "r");
--  }
--  else {
--    fp = fopen(firmfile, "r");
--  }
--
--  if (fp == NULL) {
--
--    if (firmfile == NULL) {
--      ERR("could not open file %s for reading\n", AWUSB_FIRM_FILE);
--    }
--    else {
--      ERR("could not open file %s for reading\n", firmfile);
--    }
--
--    return AWUSB_ERR;
--  }
- 
-   /* get the device handle */
-   device.udev = dev;
-@@ -227,39 +208,66 @@ int awusb_sendfirmware(struct usb_device
- 
-   usleep(100);
- 
--  do {
-+  /* send each line of firmware to the device */
-+  while(firmware[linenum] != NULL) {
- 
--    addr = 0x0000;
--    type = 0x00;
-+    line = firmware[linenum];
- 
--    /* read a line of the hex file */
--    len = awusb_readhex(fp, &addr, &type, awusb_firmware);
-+    linelen = strnlen(line, 128);
- 
--    /* end of firmware file found or error in reading firmware */
--    if (len < 0) {
--      break;
-+    if (linelen < 10) {
-+      ERR("ERROR: firmware line has insufficient length\n");
-+      return -1;
-     }
- 
--    /* print the line to the terminal if verbose mode is on */
--    if (verbose) {
--
--      printf("line=%03d length=%02x ", line, len);
--      printf("addr=%04x type=%02x data=", addr, type);
-+    /* get the length of data in the record, the first 2 chars */
-+    length = (char2hex(line[0]) << 4) ^ char2hex(line[1]);
- 
--      for (i = 0; i < len; i++) {
--	printf("%02x ", awusb_firmware[i]);
--      }
-+    if (linelen < ((2 * length) + 10)) {
-+      ERR("ERROR: not enough data to support length\n");
-+      return -1;
-+    }
-+    
-+    /* get the address to send data to from record, chars 3 through 6 */
-+    addr = ((char2hex(line[2]) << 12) ^ (char2hex(line[3]) << 8) ^ 
-+	    (char2hex(line[4]) << 4) ^ char2hex(line[5]));
-+    
-+    /* get the type to send from the record, chars 7 through 8 */
-+    type = (char2hex(line[6]) << 4) ^ char2hex(line[7]);
-+    
-+    j = 0;
-+
-+    /* get the data from the record, starting at char 9 */
-+    for (i = 8; i < (8 + (2 * length)); i += 2) {
-+      data[j] = (char2hex(line[i]) << 4) ^ char2hex(line[i+1]);
-+      j++;
-+    }
- 
--      printf("\n");
-+    /* print out the firmware line */
-+    if(verbose) {
-+        printf("line=%03d length=%02x addr=%04x type=%02x data=", 
-+            linenum, length, addr, type);
-+
-+        for (i = 0; i < length; i++) {
-+          printf("%02x ", data[i]);
-+        }
-+        printf("\n");
-     }
- 
-     /* send the line of data */
--    ret = usb_control_msg(device.handle, 0x40, 0xa0, 
--			  addr, type, awusb_firmware, len, timeout);
-+    if (length > 0) {
- 
--    line++;
--
--  } while(ret >= 0);
-+      ret = usb_control_msg(device.handle, 0x40, 0xa0, 
-+			    addr, type, data, length, timeout);
-+    
-+      if (!ret) {
-+	ERR("ERROR: sending firmware line: %d\n", linenum);
-+	return -1;
-+      }
-+    }
-+    
-+    linenum++;
-+  }
- 
-   /* there was a sending error */
-   if (ret < 0) {
-@@ -288,7 +296,6 @@ int awusb_sendfirmware(struct usb_device
- 
-   /* cleanup */
-   awusb_release(&device);
--  fclose(fp);
- 
-   return ret;
- }
-diff -rupN awusb-linux.orig/apps/awusb_down.h awusb-linux/apps/awusb_down.h
---- awusb-linux.orig/apps/awusb_down.h	2004-11-23 01:39:08.000000000 +0100
-+++ awusb-linux/apps/awusb_down.h	2012-09-24 16:39:37.276239513 +0200
-@@ -47,7 +47,7 @@
- 
- /*** globals ****************************************************************/
- 
--int verbose    = AWUSB_TRUE;
-+int verbose    = AWUSB_FALSE;
- char *firmfile = NULL;
- 
- 
+@@ -111,9 +114,9 @@ int awusb_scanbus(awusb_device *dev_tabl
+ 	      if (numdevs < maxdevs) {
+ 		
+ 		/* try to claim the device */
+-		if (awusb_claim(newdev) == AWUSB_ERR) {
++		/* if (awusb_claim(newdev) == AWUSB_ERR) {
+ 		  ERR("could not claim the device %s", dev->filename);
+-		} 
++		} */
+ 		
+ 		dev_table[numdevs++] = newdev;
+ 	      }
 diff -rupN awusb-linux.orig/apps/awusb.h awusb-linux/apps/awusb.h
 --- awusb-linux.orig/apps/awusb.h	2004-11-23 01:39:08.000000000 +0100
 +++ awusb-linux/apps/awusb.h	2012-09-21 14:15:05.344394302 +0200

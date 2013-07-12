@@ -17,11 +17,12 @@
 %
 % Examples:
 %   awusb_mex('Open', 1);
-%   awusb_mex('Toggle', zeros(1, 16));
+%   awusb_mex('Toggle', 1, zeros(1, 16));
 %   portvalue = awusb_mex('Read', 1);
-%   awusb_mex('Toggle', ones(1, 16));
+%   awusb_mex('Toggle', 1, ones(1, 16));
 %   awusb_mex('Write', ones(1, 16));
 %   awusb_mex('Close', 1);
+%   awusb_mex('CloseAll');
 %   clear awusb_mex
 %
 % Note:

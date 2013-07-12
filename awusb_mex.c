@@ -73,7 +73,7 @@ void AWUSBOpen(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
     uint64_T dev;
 
     /* The device number must be noncomplex scalar double */
-    if (!mxIsDouble(prhs[0]) || mxIsComplex(prhs[0]) || !mxIsScalar(prhs[0])) {
+    if (nrhs != 1 || !mxIsDouble(prhs[0]) || mxIsComplex(prhs[0]) || !mxIsScalar(prhs[0])) {
         mexErrMsgTxt("Device must be noncomplex scalar double.");
     }
 
@@ -85,10 +85,10 @@ void AWUSBOpen(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
     dev--;
 
     /* Claim device */
-    if (device_table[dev] == NULL || awusb_claim(device_table[dev]) != AWUSB_OK) {
+    if (device_table[dev] == NULL || device_table[dev]->claimed || awusb_claim(device_table[dev]) != AWUSB_OK) {
         mexErrMsgTxt("Could not open ActiveWire device.");
     }
-    
+
 }
 
 void AWUSBClose(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
@@ -96,7 +96,7 @@ void AWUSBClose(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
     uint64_T dev;
 
     /* The device number must be noncomplex scalar double */
-    if (!mxIsDouble(prhs[0]) || mxIsComplex(prhs[0]) || !mxIsScalar(prhs[0])) {
+    if (nrhs != 1 || !mxIsDouble(prhs[0]) || mxIsComplex(prhs[0]) || !mxIsScalar(prhs[0])) {
         mexErrMsgTxt("Device must be noncomplex scalar double.");
     }
 
@@ -262,6 +262,11 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
     int i, buflen;
     char *command;
     MexFunctionPtr f;
+
+    /* Command input argument is required. */
+    if (nrhs < 1) {
+        mexErrMsgTxt("Not enough input arguments.");
+    }
 
     /* Clear out device table */
     if (firstTime) {

@@ -1,7 +1,7 @@
 /*
 awusb_mex.c
 
-Compile in MATLAB with mex awusb_mex.c [-v]
+Compile in MATLAB with mex awusb_mex.c -lusb [-v]
 For description see awusb_mex.m
 
 Copyright (C) 2012 Andreas Widmann, University of Leipzig, widmann@uni-leipzig.de
@@ -73,7 +73,8 @@ void AWUSBOpen(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
     uint64_T dev;
 
     /* The device number must be noncomplex scalar double */
-    if (nrhs != 1 || !mxIsDouble(prhs[0]) || mxIsComplex(prhs[0]) || !mxIsScalar(prhs[0])) {
+/*    if (nrhs != 1 || !mxIsDouble(prhs[0]) || mxIsComplex(prhs[0]) || !mxIsScalar(prhs[0])) { */
+    if (nrhs != 1 || !mxIsDouble(prhs[0]) || mxIsComplex(prhs[0]) || !(mxGetN(prhs[0])==1 && mxGetM(prhs[0])==1)) {
         mexErrMsgTxt("Device must be noncomplex scalar double.");
     }
 
@@ -96,7 +97,8 @@ void AWUSBClose(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
     uint64_T dev;
 
     /* The device number must be noncomplex scalar double */
-    if (nrhs != 1 || !mxIsDouble(prhs[0]) || mxIsComplex(prhs[0]) || !mxIsScalar(prhs[0])) {
+/*    if (nrhs != 1 || !mxIsDouble(prhs[0]) || mxIsComplex(prhs[0]) || !mxIsScalar(prhs[0])) { */
+    if (nrhs != 1 || !mxIsDouble(prhs[0]) || mxIsComplex(prhs[0]) || !(mxGetN(prhs[0])==1 && mxGetM(prhs[0])==1)) {
         mexErrMsgTxt("Device must be noncomplex scalar double.");
     }
 
@@ -128,7 +130,8 @@ void AWUSBToggle(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
     }
 
     /* The device number must be noncomplex scalar double */
-    if (!mxIsDouble(prhs[0]) || mxIsComplex(prhs[0]) || !mxIsScalar(prhs[0])) {
+/*    if (!mxIsDouble(prhs[0]) || mxIsComplex(prhs[0]) || !mxIsScalar(prhs[0])) { */
+    if (!mxIsDouble(prhs[0]) || mxIsComplex(prhs[0]) || !(mxGetN(prhs[0])==1 && mxGetM(prhs[0])==1)) {
         mexErrMsgTxt("Device must be noncomplex scalar double.");
     }
 
@@ -173,7 +176,8 @@ void AWUSBWrite(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
     }
 
     /* The device number must be noncomplex scalar double */
-    if (!mxIsDouble(prhs[0]) || mxIsComplex(prhs[0]) || !mxIsScalar(prhs[0])) {
+/*    if (!mxIsDouble(prhs[0]) || mxIsComplex(prhs[0]) || !mxIsScalar(prhs[0])) { */
+    if (!mxIsDouble(prhs[0]) || mxIsComplex(prhs[0]) || !(mxGetN(prhs[0])==1 && mxGetM(prhs[0])==1)) {
         mexErrMsgTxt("Device must be noncomplex scalar double.");
     }
 
@@ -213,7 +217,8 @@ void AWUSBRead(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
     unsigned int awInputValue = 0;
 
     /* The input must be noncomplex scalar double */
-    if (nrhs != 1 || !mxIsDouble(prhs[0]) || mxIsComplex(prhs[0]) || !mxIsScalar(prhs[0])) {
+/*    if (nrhs != 1 || !mxIsDouble(prhs[0]) || mxIsComplex(prhs[0]) || !mxIsScalar(prhs[0])) { */
+    if (nrhs != 1 || !mxIsDouble(prhs[0]) || mxIsComplex(prhs[0]) || !(mxGetN(prhs[0])==1 && mxGetM(prhs[0])==1)) {
             mexErrMsgTxt("Device must be noncomplex scalar double.");
     }
 
